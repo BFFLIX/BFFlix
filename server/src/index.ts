@@ -1,5 +1,9 @@
 
 // server/src/index.ts
+import passwordResetRouter from "./routes/passwordReset";
+import authRouter from "./routes/auth";
+import { authLimiter } from "./middleware/rateLimit";
+import meRouter from "./routes/me";
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -8,6 +12,11 @@ import { connectToDB } from "./db";
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use("/auth", authRouter);
+app.use("/me", meRouter);
+app.use("/auth", authLimiter, authRouter);
+app.use("/auth", authLimiter, passwordResetRouter);
+
 
 app.get("/", (_req, res) => {
   res.send("🎬 Bfflix API is running! Try /health for a status check.");
