@@ -1,18 +1,21 @@
 
-import crypto from "crypto";
+// server/src/routes/auth.ts
 import { Router } from "express";
 import { z } from "zod";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import User from "../models/user";
-import PasswordReset from "../models/PasswordReset"; // assume you have this
+import PasswordReset from "../models/PasswordReset";
+import { generateToken, hashToken } from "../lib/resetToken";
 import { sendEmail } from "../lib/mailer";
 
 const r = Router();
 
+// ---------- Request reset ----------
 const requestResetSchema = z.object({
   email: z.string().email(),
 });
 
-// POST /auth/request-reset
 r.post("/request-reset", async (req, res) => {
   const parsed = requestResetSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error.format());
@@ -20,64 +23,74 @@ r.post("/request-reset", async (req, res) => {
   const { email } = parsed.data;
   const user = await User.findOne({ email }).select("_id email name").lean();
 
-  // Always respond 200 to avoid account enumeration
-  if (!user) {
-    return res.json({ ok: true });
-  }
+  // Always return ok to avoid account enumeration
+  if (!user) return res.json({ ok: true });
 
-  // Create token (30 min expiry)
-  const token = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+  // Invalidate outstanding unused tokens for this user
+  await PasswordReset.deleteMany({ userId: user._id, usedAt: { $exists: false } });
 
-  await PasswordReset.create({
-    userId: user._id,
-    token,
-    expiresAt,
-  });
+  // Create new token
+  const raw = generateToken(32);             // e.g. 64-char hex
+  const tokenHash = hashToken(raw);          // e.g. 64-char hex SHA-256
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 min
 
-  // Build link for the frontend page that handles reset
+  // Debug (optional): confirm lengths
+  console.log("[reset] raw:", raw.length, "hash:", tokenHash.length);
+
+  await PasswordReset.create({ userId: user._id, tokenHash, expiresAt });
+
+  // Build reset link (frontend route)
   const base = process.env.APP_BASE_URL || "http://localhost:5173";
-  const resetUrl = `${base}/reset-password?token=${token}`;
+  const resetUrl = `${base}/reset-password?token=${raw}`;
 
-  // Email content
+  // Send email (uses Ethereal in dev automatically)
   const subject = "Reset your BFFlix password";
-  const text = `Hi${user.name ? " " + user.name : ""},\n\nWe received a request to reset your BFFlix password.\n\nReset link (valid 30 minutes): ${resetUrl}\n\nIf you didn't request this, you can ignore this email.`;
-  const html = `
-    <div style="font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.5">
-      <h2>Reset your BFFlix password</h2>
-      <p>Hi${user.name ? " " + user.name : ""},</p>
-      <p>We received a request to reset your BFFlix password.</p>
-      <p>
-        <a href="${resetUrl}"
-           style="display:inline-block;background:#111;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">
-          Reset Password
-        </a>
-      </p>
-      <p>This link expires in <strong>30 minutes</strong>. If you didn’t request this, you can ignore this email.</p>
-      <p style="color:#666">If the button doesn’t work, paste this URL in your browser:<br/>
-        <a href="${resetUrl}">${resetUrl}</a>
-      </p>
-    </div>
-  `;
+  const text = `Hi${user.name ? " " + user.name : ""}, reset link (30 min): ${resetUrl}`;
+  const html = `<p>Hi${user.name ? " " + user.name : ""},</p>
+                <p>Click to reset (expires in 30 min): 
+                <a href="${resetUrl}">Reset Password</a></p>`;
 
   try {
-    const { previewUrl } = await sendEmail({
-      to: user.email,
-      subject,
-      text,
-      html,
-    });
-
-    // In dev, Ethereal gives a preview link you can click
+    const { previewUrl } = await sendEmail({ to: user.email, subject, text, html });
     if (previewUrl && process.env.NODE_ENV !== "production") {
-      console.log("🔗 Reset email preview:", previewUrl);
+      console.log("🔗 Email preview:", previewUrl);
     }
-  } catch (err) {
-    console.error("Password reset email failed:", err);
-    // Still return ok to avoid leaking existence of user accounts
+  } catch (e) {
+    console.error("Password reset email failed:", e);
+    // Still return ok to avoid account enumeration
   }
 
-  return res.json({ ok: true });
+  res.json({ ok: true });
+});
+
+// ---------- Complete reset ----------
+const resetSchema = z.object({
+  token: z.string().min(10),
+  password: z.string().min(6),
+});
+
+r.post("/reset", async (req, res) => {
+  const parsed = resetSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error.format());
+
+  const { token, password } = parsed.data;
+  const tokenHash = hashToken(token);
+
+  const record = await PasswordReset.findOne({ tokenHash });
+  if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) {
+    return res.status(400).json({ error: "Invalid or expired token" });
+  }
+
+  const user = await User.findById(record.userId);
+  if (!user) return res.status(400).json({ error: "Invalid token" });
+
+  user.passwordHash = await bcrypt.hash(password, 10);
+  await user.save();
+
+  record.usedAt = new Date();
+  await record.save();
+
+  res.json({ ok: true });
 });
 
 export default r;

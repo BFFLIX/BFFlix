@@ -1,6 +1,5 @@
 
 // server/src/index.ts
-import passwordResetRouter from "./routes/passwordReset";
 import circleRouter from "./routes/circles";
 import postsRouter from "./routes/posts";
 import authRouter from "./routes/auth";
@@ -17,7 +16,6 @@ app.use(express.json());
 app.use("/auth", authRouter);
 app.use("/me", meRouter);
 app.use("/auth", authLimiter, authRouter);
-app.use("/auth", authLimiter, passwordResetRouter);
 app.use("/circles", circleRouter);
 app.use("/posts", postsRouter);
 
