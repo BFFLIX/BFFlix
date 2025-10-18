@@ -1,4 +1,5 @@
 
+
 import mongoose from "mongoose";
 
 export const SERVICES = ["netflix","hulu","max","prime","disney","peacock"] as const;

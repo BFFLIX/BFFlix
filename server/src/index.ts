@@ -1,6 +1,8 @@
 
 // server/src/index.ts
 import passwordResetRouter from "./routes/passwordReset";
+import circleRouter from "./routes/circles";
+import postsRouter from "./routes/posts";
 import authRouter from "./routes/auth";
 import { authLimiter } from "./middleware/rateLimit";
 import meRouter from "./routes/me";
@@ -16,7 +18,8 @@ app.use("/auth", authRouter);
 app.use("/me", meRouter);
 app.use("/auth", authLimiter, authRouter);
 app.use("/auth", authLimiter, passwordResetRouter);
-
+app.use("/circles", circleRouter);
+app.use("/posts", postsRouter);
 
 app.get("/", (_req, res) => {
   res.send("🎬 Bfflix API is running! Try /health for a status check.");
