@@ -1,17 +1,17 @@
 
-import mongoose from "mongoose";
+import { Schema, model, InferSchemaType } from "mongoose";
 
-const passwordResetSchema = new mongoose.Schema(
+const schema = new Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true, required: true },
-    tokenHash: { type: String, required: true, index: true, unique: true },
-    expiresAt: { type: Date, required: true, index: true },
-    usedAt: { type: Date },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    tokenHash: { type: String, required: true, unique: true },
+    expiresAt: { type: Date, required: true },
+    usedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
 
-// Optional TTL index to auto-clean expired docs (Mongo Atlas supports this):
-passwordResetSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+schema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-export default mongoose.model("PasswordReset", passwordResetSchema);
+export type PasswordResetDoc = InferSchemaType<typeof schema>;
+export default model("PasswordReset", schema);
