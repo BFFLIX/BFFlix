@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const streamingServiceController = require('../controllers/streamingService.controller');
-const { requireAuth } = require('../middleware/auth');
+import streamingServiceController from '../controllers/streamingService.controller';
+import { requireAuth } from '../middleware/auth';
 
 // Public route - get all available streaming services
 router.get('/streaming-services', streamingServiceController.getAllServices);
@@ -31,4 +31,4 @@ router.post(
   streamingServiceController.seedServices
 );
 
-module.exports = router;
+export default router;

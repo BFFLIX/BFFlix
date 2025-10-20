@@ -1,10 +1,11 @@
-const StreamingService = require('../models/StreamingService');
-const UserStreamingService = require('../models/UserStreamingService');
-const tmdbService = require('../services/tmdb.service.');
+import { Request, Response } from 'express';
+import StreamingService from '../models/StreamingService';
+import UserStreamingService from '../models/UserStreamingService';
+import { AuthedRequest } from '../middleware/auth';
 
 class StreamingServiceController {
   // GET /api/streaming-services - Get all available streaming services
-  async getAllServices(req, res) {
+  async getAllServices(req: Request, res: Response) {
     try {
       const services = await StreamingService.find()
         .sort({ displayPriority: -1, name: 1 })
@@ -24,9 +25,9 @@ class StreamingServiceController {
   }
 
   // GET /api/users/me/streaming-services - Get user's selected services
-  async getUserServices(req, res) {
+  async getUserServices(req: AuthedRequest, res: Response) {
     try {
-      const userId = req.user.id;
+      const userId = req.user!.id;
       
       const userServices = await UserStreamingService.find({ userId })
         .populate('streamingServiceId')
@@ -34,7 +35,7 @@ class StreamingServiceController {
       
       res.json({
         success: true,
-        data: userServices.map(us => us.streamingServiceId),
+        data: userServices.map((us: any) => us.streamingServiceId),
       });
     } catch (error) {
       console.error('Error fetching user streaming services:', error);
@@ -46,9 +47,9 @@ class StreamingServiceController {
   }
 
   // POST /api/users/me/streaming-services - Add a streaming service to user
-  async addUserService(req, res) {
+  async addUserService(req: AuthedRequest, res: Response) {
     try {
-      const userId = req.user.id;
+      const userId = req.user!.id;
       const { streamingServiceId } = req.body;
 
       if (!streamingServiceId) {
@@ -101,9 +102,9 @@ class StreamingServiceController {
   }
 
   // DELETE /api/users/me/streaming-services/:id - Remove a streaming service
-  async removeUserService(req, res) {
+  async removeUserService(req: AuthedRequest, res: Response) {
     try {
-      const userId = req.user.id;
+      const userId = req.user!.id;
       const { id } = req.params;
 
       const deleted = await UserStreamingService.findOneAndDelete({
@@ -132,7 +133,7 @@ class StreamingServiceController {
   }
 
   // POST /api/admin/streaming-services/seed - Seed initial streaming services
-  async seedServices(req, res) {
+  async seedServices(req: Request, res: Response) {
     try {
       // Popular US streaming services
       const services = [
@@ -171,4 +172,4 @@ class StreamingServiceController {
   }
 }
 
-module.exports = new StreamingServiceController();
+export default new StreamingServiceController();
