@@ -1,18 +1,34 @@
 
 # Node
 node_modules/
-dist/
-
-# Env files
-.env
-.env.local
-.env.development
-.env.production
-
-# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Mac system files
+# TypeScript
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.production
+.env.development
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# OS
 .DS_Store
+
+# Logs
+logs
+*.log
+logs/**/*.log
+
+# Misc
+coverage/
+.idea/
+.vscode/
