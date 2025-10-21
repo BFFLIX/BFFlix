@@ -6,12 +6,57 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import User from "../models/user";
 import PasswordReset from "../models/PasswordReset";
+import { signToken } from "../lib/jwt";
 import { generateToken, hashToken } from "../lib/resetToken";
 import { sendEmail } from "../lib/mailer";
 
 const r = Router();
 
-// ---------- Request reset ----------
+// ---------- Signup ----------
+const signupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  name: z.string().min(1).max(50),
+});
+
+r.post("/signup", async (req, res) => {
+  const parsed = signupSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error.format());
+
+  const { email, password, name } = parsed.data;
+
+  const existing = await User.findOne({ email });
+  if (existing) return res.status(409).json({ error: "Email already in use" });
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await User.create({ email, name, passwordHash });
+
+  const token = signToken(String(user._id));
+  res.json({ token, user: { id: user._id, email: user.email, name: user.name } });
+});
+
+// ---------- Login ----------
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+r.post("/login", async (req, res) => {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error.format());
+
+  const { email, password } = parsed.data;
+  const user = await User.findOne({ email });
+  if (!user) return res.status(401).json({ error: "Invalid email or password" });
+
+  const ok = await bcrypt.compare(password, user.passwordHash);
+  if (!ok) return res.status(401).json({ error: "Invalid email or password" });
+
+  const token = signToken(String(user._id));
+  res.json({ token, user: { id: user._id, email: user.email, name: user.name } });
+});
+
+// ---------- Request password reset ----------
 const requestResetSchema = z.object({
   email: z.string().email(),
 });
@@ -23,27 +68,19 @@ r.post("/request-reset", async (req, res) => {
   const { email } = parsed.data;
   const user = await User.findOne({ email }).select("_id email name").lean();
 
-  // Always return ok to avoid account enumeration
-  if (!user) return res.json({ ok: true });
+  if (!user) return res.json({ ok: true }); // Avoid enumeration
 
-  // Invalidate outstanding unused tokens for this user
   await PasswordReset.deleteMany({ userId: user._id, usedAt: { $exists: false } });
 
-  // Create new token
-  const raw = generateToken(32);             // e.g. 64-char hex
-  const tokenHash = hashToken(raw);          // e.g. 64-char hex SHA-256
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 min
-
-  // Debug (optional): confirm lengths
-  console.log("[reset] raw:", raw.length, "hash:", tokenHash.length);
+  const raw = generateToken(32);
+  const tokenHash = hashToken(raw);
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
   await PasswordReset.create({ userId: user._id, tokenHash, expiresAt });
 
-  // Build reset link (frontend route)
   const base = process.env.APP_BASE_URL || "http://localhost:5173";
   const resetUrl = `${base}/reset-password?token=${raw}`;
 
-  // Send email (uses Ethereal in dev automatically)
   const subject = "Reset your BFFlix password";
   const text = `Hi${user.name ? " " + user.name : ""}, reset link (30 min): ${resetUrl}`;
   const html = `<p>Hi${user.name ? " " + user.name : ""},</p>
@@ -57,13 +94,12 @@ r.post("/request-reset", async (req, res) => {
     }
   } catch (e) {
     console.error("Password reset email failed:", e);
-    // Still return ok to avoid account enumeration
   }
 
   res.json({ ok: true });
 });
 
-// ---------- Complete reset ----------
+// ---------- Complete password reset ----------
 const resetSchema = z.object({
   token: z.string().min(10),
   password: z.string().min(6),
