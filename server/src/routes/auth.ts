@@ -2,94 +2,137 @@
 // server/src/routes/auth.ts
 import { Router } from "express";
 import { z } from "zod";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import User from "../models/user";
-import { signToken } from "../lib/jwt";
+import PasswordReset from "../models/PasswordReset";
+import { generateToken, hashToken } from "../lib/resetToken";
+import { sendEmail } from "../lib/mailer";
 
 const r = Router();
 
-/**
- * Validation schemas
- */
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+
+function signToken(sub: string) {
+  return jwt.sign({ sub }, JWT_SECRET, { expiresIn: "7d" });
+}
+
+// ---------- Signup ----------
 const signupSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  name: z.string().min(1, "Name is required"),
+  password: z.string().min(6),
+  name: z.string().min(1).max(50),
 });
 
+r.post("/signup", async (req, res) => {
+  const parsed = signupSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error.format());
+
+  const { email, password, name } = parsed.data;
+
+  const existing = await User.findOne({ email });
+  if (existing) return res.status(409).json({ error: "Email already in use" });
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await User.create({ email, name, passwordHash });
+
+  const token = signToken(String(user._id));
+  res.json({ token, user: { id: user._id, email: user.email, name: user.name } });
+});
+
+// ---------- Login ----------
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
 });
 
-/**
- * POST /auth/signup
- * - Validates input
- * - Hashes password
- * - Creates user (unique email)
- * - Returns JWT
- */
-r.post("/signup", async (req, res) => {
-  try {
-    const parsed = signupSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json(parsed.error.format());
-    }
+r.post("/login", async (req, res) => {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error.format());
 
-    const { email, password, name } = parsed.data;
+  const { email, password } = parsed.data;
+  const user = await User.findOne({ email });
+  if (!user) return res.status(401).json({ error: "Invalid email or password" });
 
-    // Optional fast check to give a friendly error quickly
-    const exists = await User.findOne({ email }).lean();
-    if (exists) {
-      return res.status(409).json({ error: "Email already in use" });
-    }
+  const ok = await bcrypt.compare(password, user.passwordHash);
+  if (!ok) return res.status(401).json({ error: "Invalid email or password" });
 
-    const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, passwordHash, name });
-
-    const token = signToken(user.id);
-    return res.json({ token });
-  } catch (err: any) {
-    // Handle unique index violation from Mongo in case of race conditions
-    if (err?.code === 11000 && err?.keyPattern?.email) {
-      return res.status(409).json({ error: "Email already in use" });
-    }
-    console.error("Signup error:", err);
-    return res.status(500).json({ error: "Unexpected error" });
-  }
+  const token = signToken(String(user._id));
+  res.json({ token, user: { id: user._id, email: user.email, name: user.name } });
 });
 
-/**
- * POST /auth/login
- * - Validates input
- * - Verifies user & password
- * - Returns JWT
- */
-r.post("/login", async (req, res) => {
+// ---------- Request password reset ----------
+const requestResetSchema = z.object({
+  email: z.string().email(),
+});
+
+r.post("/request-reset", async (req, res) => {
+  const parsed = requestResetSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error.format());
+
+  const { email } = parsed.data;
+  const user = await User.findOne({ email }).select("_id email name").lean();
+
+  if (!user) return res.json({ ok: true }); // Avoid enumeration
+
+  await PasswordReset.deleteMany({ userId: user._id, usedAt: { $exists: false } });
+
+  const raw = generateToken(32);
+  const tokenHash = hashToken(raw);
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+  await PasswordReset.create({ userId: user._id, tokenHash, expiresAt });
+
+  const base = process.env.APP_BASE_URL || "http://localhost:5173";
+  const resetUrl = `${base}/reset-password?token=${raw}`;
+
+  const subject = "Reset your BFFlix password";
+  const text = `Hi${user.name ? " " + user.name : ""}, reset link (30 min): ${resetUrl}`;
+  const html = `<p>Hi${user.name ? " " + user.name : ""},</p>
+                <p>Click to reset (expires in 30 min): 
+                <a href="${resetUrl}">Reset Password</a></p>`;
+
   try {
-    const parsed = loginSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json(parsed.error.format());
+    const { previewUrl } = await sendEmail({ to: user.email, subject, text, html });
+    if (previewUrl && process.env.NODE_ENV !== "production") {
+      console.log("🔗 Email preview:", previewUrl);
     }
-
-    const { email, password } = parsed.data;
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ error: "Invalid email or password" });
-    }
-
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) {
-      return res.status(401).json({ error: "Invalid email or password" });
-    }
-
-    const token = signToken(user.id);
-    return res.json({ token });
-  } catch (err) {
-    console.error("Login error:", err);
-    return res.status(500).json({ error: "Unexpected error" });
+  } catch (e) {
+    console.error("Password reset email failed:", e);
   }
+
+  res.json({ ok: true });
+});
+
+// ---------- Complete password reset ----------
+const resetSchema = z.object({
+  token: z.string().min(10),
+  password: z.string().min(6),
+});
+
+r.post("/reset", async (req, res) => {
+  const parsed = resetSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error.format());
+
+  const { token, password } = parsed.data;
+  const tokenHash = hashToken(token);
+
+  const record = await PasswordReset.findOne({ tokenHash });
+  if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) {
+    return res.status(400).json({ error: "Invalid or expired token" });
+  }
+
+  const user = await User.findById(record.userId);
+  if (!user) return res.status(400).json({ error: "Invalid token" });
+
+  user.passwordHash = await bcrypt.hash(password, 10);
+  await user.save();
+
+  record.usedAt = new Date();
+  await record.save();
+
+  res.json({ ok: true });
 });
 
 export default r;
