@@ -2,6 +2,7 @@
 // server/src/routes/auth.ts
 import { Router } from "express";
 import { z } from "zod";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import User from "../models/user";
 import PasswordReset from "../models/PasswordReset";
