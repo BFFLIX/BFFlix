@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user";
 import PasswordReset from "../models/PasswordReset";
+import { signToken } from "../lib/jwt";
 import { generateToken, hashToken } from "../lib/resetToken";
 import { sendEmail } from "../lib/mailer";
 
