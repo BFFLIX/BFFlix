@@ -3,6 +3,7 @@
 import mongoose from "mongoose";
 
 export const SERVICES = ["netflix","hulu","max","prime","disney","peacock"] as const;
+
 export type Service = typeof SERVICES[number];
 
 const userSchema = new mongoose.Schema(
@@ -11,6 +12,7 @@ const userSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true },
     name: { type: String, required: true },
     services: [{ type: String, enum: SERVICES, default: [] }],
+    isAdmin: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

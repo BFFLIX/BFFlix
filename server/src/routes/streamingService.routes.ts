@@ -2,6 +2,7 @@ import express from 'express';
 const router = express.Router();
 import streamingServiceController from '../controllers/streamingService.controller';
 import { requireAuth } from '../middleware/auth';
+import { requireAdmin } from "../middleware/requireAdmin";
 
 // Public route - get all available streaming services
 router.get('/streaming-services', streamingServiceController.getAllServices);
@@ -16,6 +17,7 @@ router.get(
 router.post(
   '/users/me/streaming-services',
   requireAuth,
+  requireAdmin,
   streamingServiceController.addUserService
 );
 

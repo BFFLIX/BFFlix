@@ -6,7 +6,7 @@ import User from "../models/user";
 
 // extend Express Request to carry user info
 export interface AuthedRequest extends Request {
-  user?: { id: string };
+  user?: { id: string; isAdmin?: boolean };
 }
 
 // main middleware
@@ -23,11 +23,11 @@ export async function requireAuth(
     }
 
     const payload = verifyToken(token) as { sub: string };
-    const user = await User.findById(payload.sub).lean().exec();
+    const user = await User.findById(payload.sub).select("_id isAdmin").lean();
+  
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    req.user = { id: String(user._id), isAdmin: !!user.isAdmin };
 
-    if (!user) {
-      return res.status(401).json({ error: "Invalid token" });
-    }
 
     req.user = { id: String(user._id) };
     next();
