@@ -1,5 +1,6 @@
 
 // server/src/index.ts
+import streamingServiceRoutes from "./routes/streamingService.routes";//10/20
 import circleRouter from "./routes/circles";
 import postsRouter from "./routes/posts";
 import authRouter from "./routes/auth";
@@ -10,6 +11,9 @@ import express from "express";
 import cors from "cors";
 import { connectToDB } from "./db";
 
+
+
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -18,6 +22,9 @@ app.use("/me", meRouter);
 app.use("/auth", authLimiter, authRouter);
 app.use("/circles", circleRouter);
 app.use("/posts", postsRouter);
+//10/20 commit
+app.use("/api", streamingServiceRoutes);
+
 
 app.get("/", (_req, res) => {
   res.send("🎬 Bfflix API is running! Try /health for a status check.");

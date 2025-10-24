@@ -1,0 +1,27 @@
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: bfflix-mongo
+    ports:
+      - "27017:27017"   # optional: exposes Mongo to your host tools (Compass, etc.)
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  api:
+    build: .
+    container_name: bfflix-api
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.local
+    environment:
+      # You can keep MONGODB_URI in .env.local; this is just here for clarity/override:
+      MONGODB_URI: mongodb://mongo:27017/bfflix_dev
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
