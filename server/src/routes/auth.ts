@@ -4,6 +4,7 @@ import { Router } from "express";
 import { z } from "zod";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import User from "../models/user";
 import PasswordReset from "../models/PasswordReset";
 import { signToken } from "../lib/jwt";
