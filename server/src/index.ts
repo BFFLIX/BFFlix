@@ -1,17 +1,17 @@
 
 // server/src/index.ts
+import "dotenv/config";
 import streamingServiceRoutes from "./routes/streamingService.routes";//10/20
 import circleRouter from "./routes/circles";
 import postsRouter from "./routes/posts";
 import authRouter from "./routes/auth";
 import { authLimiter } from "./middleware/rateLimit";
 import meRouter from "./routes/me";
-import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { connectToDB } from "./db";
-
-
+import agentRouter from "./routes/agent";
+import viewingsRouter from "./routes/viewings";
 
 
 const app = express();
@@ -24,6 +24,8 @@ app.use("/circles", circleRouter);
 app.use("/posts", postsRouter);
 //10/20 commit
 app.use("/api", streamingServiceRoutes);
+app.use("/agent", agentRouter)
+app.use("/viewings", viewingsRouter);
 
 
 app.get("/", (_req, res) => {
