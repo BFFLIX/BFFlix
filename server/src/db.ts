@@ -1,10 +1,28 @@
 
 import mongoose from "mongoose";
+import { env } from "./config/env";
 
-export async function connectToDB(uri: string) {
-  if (!uri) throw new Error("MONGODB_URI is missing");
-  // Avoid multiple connects in dev hot-reload
-  if (mongoose.connection.readyState === 1) return mongoose.connection;
-  await mongoose.connect(uri);
-  return mongoose.connection;
+let dbReady = false;
+export function isDbReady() { return dbReady; }
+
+export async function connectToDB() {
+  try {
+    await mongoose.connect(env.MONGODB_URI);
+    dbReady = true;
+    console.log("[DB] Connected");
+
+    mongoose.connection.on("disconnected", () => {
+      dbReady = false;
+      console.error("[DB] Disconnected");
+    });
+
+    mongoose.connection.on("reconnected", () => {
+      dbReady = true;
+      console.log("[DB] Reconnected");
+    });
+  } catch (err) {
+    dbReady = false;
+    console.error("[DB] Initial connect error:", err);
+    // App stays up; routes (except /health) will return 503 via middleware.
+  }
 }
