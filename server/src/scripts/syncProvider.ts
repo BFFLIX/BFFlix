@@ -1,5 +1,5 @@
 
-import "dotenv/config";
+// server/src/scripts/syncProviders.ts
 import { connectToDB } from "../db";
 import tmdb from "../Services/tmdb.service";
 import StreamingService from "../models/StreamingService";
@@ -11,25 +11,28 @@ async function syncProviders() {
     await StreamingService.updateOne(
       { tmdbProviderId: p.provider_id },
       {
-        tmdbProviderId: p.provider_id,
-        name: p.provider_name,
-        logoPath: p.logo_path,
-        displayPriority: p.display_priority,
+        $set: {
+          tmdbProviderId: p.provider_id,
+          name: p.provider_name,
+          logoPath: p.logo_path,
+          displayPriority: p.display_priority ?? 9999,
+          updatedAt: new Date(),
+        },
       },
       { upsert: true }
     );
   }
 
-  console.log("✅ Providers synced with TMDB");
+  console.log(`✅ Providers synced with TMDB: ${providers.length}`);
 }
 
 async function main() {
-  await connectToDB(process.env.MONGODB_URI!);
+  await connectToDB(); // no args now
   await syncProviders();
   process.exit(0);
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error("Sync failed:", err);
   process.exit(1);
 });
