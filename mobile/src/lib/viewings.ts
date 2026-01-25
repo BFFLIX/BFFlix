@@ -114,8 +114,7 @@ export async function fetchTMDBDetails(
     const genres = response.genres || [];
 
     return { title, posterUrl, year, genres };
-  } catch (error) {
-    console.error("Failed to fetch TMDB details:", error);
+  } catch {
     return { title: "Unknown Title" };
   }
 }

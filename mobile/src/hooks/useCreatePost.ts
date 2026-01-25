@@ -37,8 +37,7 @@ export function useCreatePost(onSuccess: () => void) {
         setLoadingCircles(true);
         const fetchedCircles = await fetchCircles();
         setCircles(fetchedCircles);
-      } catch (error) {
-        console.error("Failed to fetch circles:", error);
+      } catch {
         Alert.alert("Error", "Failed to load your circles");
         setCircles([]);
       } finally {
@@ -154,7 +153,6 @@ export function useCreatePost(onSuccess: () => void) {
       resetForm();
       onSuccess();
     } catch (error: any) {
-      console.error("Failed to create post:", error);
       Alert.alert(
         "Error",
         error?.message || "Failed to create post. Please try again."

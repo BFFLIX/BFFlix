@@ -39,8 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const access = await getAccessToken();
         const refresh = await getRefreshToken();
         setIsAuthed(Boolean(access || refresh));
-      } catch (error) {
-        console.error('[AUTH] Error checking tokens:', error);
+      } catch {
         setIsAuthed(false);
       } finally {
         setIsReady(true);
