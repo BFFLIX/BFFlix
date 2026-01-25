@@ -55,8 +55,7 @@ export function MediaSearchInput({
 
         setResults(filtered);
         setShowResults(true);
-      } catch (error) {
-        console.error("Search failed:", error);
+      } catch {
         setResults([]);
       } finally {
         setIsSearching(false);

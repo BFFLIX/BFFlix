@@ -38,7 +38,6 @@ export function useFeed() {
       setNextCursor(response.nextCursor || null);
       setHasMore(!!response.nextCursor);
     } catch (err: any) {
-      console.error("Failed to load feed:", err);
       setError(err?.message || "Failed to load feed");
       setPosts([]);
     } finally {
@@ -65,8 +64,7 @@ export function useFeed() {
       setPosts((prev) => [...prev, ...(response.items || [])]);
       setNextCursor(response.nextCursor || null);
       setHasMore(!!response.nextCursor);
-    } catch (err: any) {
-      console.error("Failed to load more posts:", err);
+    } catch {
       Alert.alert("Error", "Failed to load more posts");
     } finally {
       setIsLoadingMore(false);
@@ -84,8 +82,7 @@ export function useFeed() {
       setNextCursor(response.nextCursor || null);
       setHasMore(!!response.nextCursor);
       setError(null);
-    } catch (err: any) {
-      console.error("Failed to refresh feed:", err);
+    } catch {
       Alert.alert("Error", "Failed to refresh feed");
     } finally {
       setIsRefreshing(false);
@@ -120,9 +117,7 @@ export function useFeed() {
         } else {
           await likePost(postId);
         }
-      } catch (err: any) {
-        console.error("Failed to toggle like:", err);
-
+      } catch {
         // Rollback on error
         setPosts(originalPosts);
 
@@ -141,9 +136,7 @@ export function useFeed() {
         setPosts((prev) => prev.filter((p) => p.id !== postId));
 
         await deletePost(postId);
-      } catch (err: any) {
-        console.error("Failed to delete post:", err);
-
+      } catch {
         // Rollback on error
         setPosts(posts);
 

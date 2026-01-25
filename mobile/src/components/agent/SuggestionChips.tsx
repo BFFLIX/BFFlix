@@ -34,8 +34,7 @@ export function SuggestionChips({
       setIsLoading(true);
       const data = await fetchSuggestions();
       setSuggestions(data);
-    } catch (error) {
-      console.error("Failed to load suggestions:", error);
+    } catch {
       // Fail silently - suggestions are optional
       setSuggestions([]);
     } finally {

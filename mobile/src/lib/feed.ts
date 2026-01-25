@@ -490,7 +490,6 @@ export async function fetchStreamingServices(): Promise<StreamingService[]> {
       rawServices = response.services;
     }
     else {
-      console.warn("[API] fetchStreamingServices: Unexpected response format, using mock data");
       return MOCK_STREAMING_SERVICES;
     }
 
@@ -499,8 +498,7 @@ export async function fetchStreamingServices(): Promise<StreamingService[]> {
 
     // If filtering removed everything, fall back to mock data
     return filteredServices.length > 0 ? filteredServices : MOCK_STREAMING_SERVICES;
-  } catch (err) {
-    console.error("[API] fetchStreamingServices failed:", err);
+  } catch {
     return MOCK_STREAMING_SERVICES;
   }
 }
@@ -531,15 +529,13 @@ export async function fetchUserStreamingServices(): Promise<StreamingService[]> 
       rawServices = response.streamingServices;
     }
     else {
-      console.warn("[API] fetchUserStreamingServices: Unexpected response format, returning empty array");
       return [];
     }
 
     // Filter to only mainstream services (consistency with available services)
     const filteredServices = filterMainstreamServices(rawServices);
     return filteredServices;
-  } catch (err) {
-    console.error("[API] fetchUserStreamingServices failed:", err);
+  } catch {
     // Return empty array - user hasn't selected any services yet
     return [];
   }

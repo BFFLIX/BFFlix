@@ -20,7 +20,6 @@ export function DrawerContent(props: DrawerContentComponentProps) {
   // Refresh when drawer opens (to pick up profile changes)
   useEffect(() => {
     const unsubscribe = props.navigation.addListener('drawerOpen', () => {
-      console.log('[DRAWER] Drawer opened - refreshing user data');
       refreshUser();
     });
 
@@ -51,8 +50,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
       await logout();
       props.navigation.closeDrawer();
       router.replace("/(auth)/login");
-    } catch (err) {
-      console.error("Failed to logout:", err);
+    } catch {
+      // Logout failed silently
     }
   };
 

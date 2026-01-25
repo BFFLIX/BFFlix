@@ -132,7 +132,6 @@ export function useCreateViewing(onSuccess: () => void) {
       resetForm();
       onSuccess();
     } catch (err) {
-      console.error("Failed to create viewing:", err);
       setErrors({
         media: err instanceof Error ? err.message : "Failed to create viewing",
       });

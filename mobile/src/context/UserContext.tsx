@@ -34,7 +34,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const userData = await fetchCurrentUser();
       setUser(userData);
     } catch (err: any) {
-      console.error("[UserContext] Failed to load user:", err);
       setError(err?.message || "Failed to load user");
       setUser(null);
     } finally {

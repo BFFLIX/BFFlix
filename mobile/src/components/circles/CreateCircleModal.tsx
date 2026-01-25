@@ -81,7 +81,6 @@ export function CreateCircleModal({
       resetForm();
       onSuccess();
     } catch (err: any) {
-      console.error("Failed to create circle:", err);
       Alert.alert(
         "Error",
         err?.message || "Failed to create circle. Please try again."

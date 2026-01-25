@@ -24,9 +24,8 @@ export function CommentInput({
     try {
       await onSubmit(trimmedText);
       setText(""); // Clear input on success
-    } catch (error) {
+    } catch {
       // Error handling is done in parent component
-      console.error("Failed to submit comment:", error);
     }
   };
 

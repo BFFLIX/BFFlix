@@ -16,8 +16,7 @@ export function useComments(postId: string, currentUserId?: string, currentUserN
       setIsLoading(true);
       const fetchedComments = await fetchComments(postId);
       setComments(fetchedComments);
-    } catch (error) {
-      console.error("Failed to fetch comments:", error);
+    } catch {
       Alert.alert("Error", "Failed to load comments");
       setComments([]);
     } finally {
@@ -49,7 +48,6 @@ export function useComments(postId: string, currentUserId?: string, currentUserN
         // Add comment to the list (append to end)
         setComments((prev) => [...prev, newComment]);
       } catch (error) {
-        console.error("Failed to add comment:", error);
         Alert.alert("Error", "Failed to post comment");
         throw error; // Re-throw so CommentInput can handle it
       } finally {
@@ -68,8 +66,7 @@ export function useComments(postId: string, currentUserId?: string, currentUserN
         setComments((prev) => prev.filter((c) => c.id !== commentId));
 
         await deleteComment(postId, commentId);
-      } catch (error) {
-        console.error("Failed to delete comment:", error);
+      } catch {
         Alert.alert("Error", "Failed to delete comment");
 
         // Rollback on error

@@ -64,7 +64,6 @@ export function useViewings() {
       setNextCursor(response.nextCursor);
       setHasMore(response.hasMore);
     } catch (err) {
-      console.error("Failed to load viewings:", err);
       setError(err instanceof Error ? err.message : "Failed to load viewings");
       setViewings([]);
       setStats({ total: 0, movies: 0, shows: 0, notes: 0 });
@@ -95,8 +94,7 @@ export function useViewings() {
       setStats(computeStats(updatedViewings));
       setNextCursor(response.nextCursor);
       setHasMore(response.hasMore);
-    } catch (err) {
-      console.error("Failed to load more viewings:", err);
+    } catch {
       Alert.alert("Error", "Failed to load more viewings");
     } finally {
       setIsLoadingMore(false);
@@ -130,8 +128,7 @@ export function useViewings() {
       setNextCursor(response.nextCursor);
       setHasMore(response.hasMore);
       setError(null);
-    } catch (err) {
-      console.error("Failed to refresh viewings:", err);
+    } catch {
       Alert.alert("Error", "Failed to refresh viewings");
     } finally {
       setIsRefreshing(false);
@@ -159,8 +156,7 @@ export function useViewings() {
 
               try {
                 await deleteViewing(id);
-              } catch (err) {
-                console.error("Failed to delete viewing:", err);
+              } catch {
                 // Rollback on error
                 setViewings(originalViewings);
                 setStats(computeStats(originalViewings));
