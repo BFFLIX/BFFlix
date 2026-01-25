@@ -463,6 +463,10 @@ r.get(
           authorName: authorProfile?.username || fallbackName,
           authorAvatarUrl: authorProfile?.avatarUrl,
           circleNames,
+          body:
+            typeof row.comment === "string" && row.comment.trim().length
+              ? row.comment
+              : "",
           likeCount: likeCounts.get(key) || 0,
           commentCount: commentCounts.get(key) || 0,
           likedByMe: likedByMe.has(key),
